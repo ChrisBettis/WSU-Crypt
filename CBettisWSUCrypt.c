@@ -42,8 +42,8 @@ int main(int argc, char** argv){
         char* leftkey = (char*)calloc(5,sizeof(char));
         char* rightkey = (char*)calloc(17,sizeof(char));
         do{
-            if(fgets(plaintext,17,ptFile) != NULL){
-                //stringtohex(filetext,plaintext);
+            if(fgets(filetext,9,ptFile) != NULL){
+                stringtohex(filetext,plaintext);
                 while(strlen(plaintext)<16){
                     strcat(plaintext,"0");
                 }   
@@ -99,38 +99,17 @@ int main(int argc, char** argv){
 }
 
 void stringtohex(char* string, char* hex){
-    char temp[3];
-    sprintf(temp,"%x",string[0]);
-    hex[0] = temp[0];
-    hex[1] = temp[1];
-
-    sprintf(temp,"%x",string[1]);
-    hex[2] = temp[0];
-    hex[3] = temp[1];
-
-    sprintf(temp,"%x",string[1]);
-    hex[4] = temp[0];
-    hex[5] = temp[1];
     
-    sprintf(temp,"%x",string[1]);
-    hex[6] = temp[0];
-    hex[7] = temp[1];
+    
+    char tempword[strlen(string)*2 + 1];
+    tempword[0] = '\0';
+    for(int i = 0; i < strlen(string); i++){
+        char temp[3];
+        sprintf(temp,"%x",string[i]);
+        strcat(tempword,temp);
+    }
 
-    sprintf(temp,"%x",string[1]);
-    hex[8] = temp[0];
-    hex[9] = temp[1];
-
-    sprintf(temp,"%x",string[1]);
-    hex[10] = temp[0];
-    hex[11] = temp[1];
-
-    sprintf(temp,"%x",string[1]);
-    hex[12] = temp[0];
-    hex[13] = temp[1];
-
-    sprintf(temp,"%x",string[1]);
-    hex[14] = temp[0];
-    hex[15] = temp[1];
+    sprintf(hex,"%s",tempword);     
 }
 
 /**
