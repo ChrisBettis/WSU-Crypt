@@ -18,6 +18,7 @@ void helpermethod(char*,char*);
 char inttohexchar(int);
 void swap(char*);
 void stringtohex(char*,char*);
+void hextostring(char*,char*);
 
 /**
  * 7365637572697479, was the plaintext I was using for testing
@@ -54,7 +55,7 @@ int main(int argc, char** argv){
                 fprintf(cipherFile,"%s",plaintext);
             }
         }while(!feof(ptFile));
-        //free(filetext);
+        free(filetext);
         free(plaintext);
         free(leftkey);
         free(rightkey);
@@ -69,6 +70,7 @@ int main(int argc, char** argv){
             printf("An input file does not exist\n");
             exit(-1);
         }
+        char* filetext = (char*) calloc(9,sizeof(char));
         char* ciphertext = (char*) calloc(17,sizeof(char));
         char* leftkey = (char*)calloc(5,sizeof(char));
         char* rightkey = (char*)calloc(17,sizeof(char));        
@@ -81,9 +83,11 @@ int main(int argc, char** argv){
                 fgets(rightkey,17,keyFile);
                 decrypt(ciphertext,leftkey,rightkey);
                 printf("%s\n",ciphertext);
-                fprintf(ptFile,"%s",ciphertext);
+                hextostring(ciphertext,filetext);
+                fprintf(ptFile,"%s",filetext);
             }
         }while(!feof(cipherFile));
+        free(filetext);
         free(ciphertext);
         free(leftkey);
         free(rightkey);
@@ -97,10 +101,31 @@ int main(int argc, char** argv){
     }
     return 0;
 }
+/**
+ * converts a string that contains all hex values to a string literal.
+ * 
+ * @param char* hex: the string containing the hex values
+ * @param char* string: that value that literal string will placed into.
+ */
+void hextostring(char* hex, char* string){
+    char tempword[9];
+    for(int i=0;i<strlen(hex);i+=2){
+        char temp[3];
+        temp[0] = hex[i];
+        temp[1] = hex[i+1];
+        int hexvValue = strtoul(temp,NULL,16);
+        tempword[i/2] = hexvValue;
+    }
+    sprintf(string,"%s",tempword);
+}
 
-void stringtohex(char* string, char* hex){
-    
-    
+/**
+ * converts the string literal into a string of corresponding hex values.
+ * 
+ * @param char* string: the value that contains the string literal.
+ * @param char* hex: the char* that will get the conversion of the string literal to hex.
+ */
+void stringtohex(char* string, char* hex){    
     char tempword[strlen(string)*2 + 1];
     tempword[0] = '\0';
     for(int i = 0; i < strlen(string); i++){
@@ -108,7 +133,6 @@ void stringtohex(char* string, char* hex){
         sprintf(temp,"%x",string[i]);
         strcat(tempword,temp);
     }
-
     sprintf(hex,"%s",tempword);     
 }
 
