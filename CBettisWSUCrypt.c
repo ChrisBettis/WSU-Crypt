@@ -8,13 +8,18 @@ int ROUNDS = 20;
 unsigned long long bitshiftkey(unsigned long long, unsigned long long);
 void encrypt(char*,char*,char*);
 void decrypt(char*,char*,char*);
-void whitening(char*,char*);
+void whitening(char*,char*,char*);
 char** subkeyGeneration(char*,char*);
 unsigned int fTable(int, int);
 char* gfunction(char*, char*,char*,char*,char*);
 unsigned int hexchartoint(char);
 unsigned int gfunctionhelper(unsigned int, unsigned int, unsigned int);
 void helpermethod(char*,char*);
+char inttohexchar(int);
+void swap(char*);
+void stringtohex(char*,char*);
+void hextostring(char*,char*);
+
 /**
  * 7365637572697479, was the plaintext I was using for testing
  */
@@ -33,11 +38,13 @@ int main(int argc, char** argv){
             printf("An input file does not exist\n");
             exit(-1);
         }
+        char* filetext = (char*) calloc(9,sizeof(char));
         char* plaintext = (char*) calloc(17,sizeof(char));
         char* leftkey = (char*)calloc(5,sizeof(char));
         char* rightkey = (char*)calloc(17,sizeof(char));
         do{
-            if(fgets(plaintext,17,ptFile) != NULL){
+            if(fgets(filetext,9,ptFile) != NULL){
+                stringtohex(filetext,plaintext);
                 while(strlen(plaintext)<16){
                     strcat(plaintext,"0");
                 }   
@@ -48,6 +55,7 @@ int main(int argc, char** argv){
                 fprintf(cipherFile,"%s",plaintext);
             }
         }while(!feof(ptFile));
+        free(filetext);
         free(plaintext);
         free(leftkey);
         free(rightkey);
@@ -62,6 +70,7 @@ int main(int argc, char** argv){
             printf("An input file does not exist\n");
             exit(-1);
         }
+        char* filetext = (char*) calloc(9,sizeof(char));
         char* ciphertext = (char*) calloc(17,sizeof(char));
         char* leftkey = (char*)calloc(5,sizeof(char));
         char* rightkey = (char*)calloc(17,sizeof(char));        
@@ -74,9 +83,11 @@ int main(int argc, char** argv){
                 fgets(rightkey,17,keyFile);
                 decrypt(ciphertext,leftkey,rightkey);
                 printf("%s\n",ciphertext);
-                fprintf(ptFile,"%s",ciphertext);
+                hextostring(ciphertext,filetext);
+                fprintf(ptFile,"%s",filetext);
             }
         }while(!feof(cipherFile));
+        free(filetext);
         free(ciphertext);
         free(leftkey);
         free(rightkey);
@@ -91,6 +102,41 @@ int main(int argc, char** argv){
     return 0;
 }
 /**
+ * converts a string that contains all hex values to a string literal.
+ * 
+ * @param char* hex: the string containing the hex values
+ * @param char* string: that value that literal string will placed into.
+ */
+void hextostring(char* hex, char* string){
+    char tempword[9];
+    for(int i=0;i<strlen(hex);i+=2){
+        char temp[3];
+        temp[0] = hex[i];
+        temp[1] = hex[i+1];
+        int hexvValue = strtoul(temp,NULL,16);
+        tempword[i/2] = hexvValue;
+    }
+    sprintf(string,"%s",tempword);
+}
+
+/**
+ * converts the string literal into a string of corresponding hex values.
+ * 
+ * @param char* string: the value that contains the string literal.
+ * @param char* hex: the char* that will get the conversion of the string literal to hex.
+ */
+void stringtohex(char* string, char* hex){    
+    char tempword[strlen(string)*2 + 1];
+    tempword[0] = '\0';
+    for(int i = 0; i < strlen(string); i++){
+        char temp[3];
+        sprintf(temp,"%x",string[i]);
+        strcat(tempword,temp);
+    }
+    sprintf(hex,"%s",tempword);     
+}
+
+/**
 *   Takes the plain text and encrypts the text using the keys
 *
 *   This menthod drives the encryption proccess making sure that
@@ -102,15 +148,16 @@ int main(int argc, char** argv){
 *   @param char* keyright: the right 64 bits of the 80 bit key.
 */
 void encrypt(char* plaintext, char* keyleft, char* keyright){
-    whitening(plaintext,keyright);
+    whitening(plaintext,keyleft,keyright);
     char** subkeys = subkeyGeneration(keyleft,keyright);
-
     //the start of the  encryption proccess
     for(int i=0;i<ROUNDS;i++){
+        //printf("Round: %d\n",i);
         char* subkeyset = subkeys[i];
         helpermethod(plaintext,subkeyset);
     }
-    whitening(plaintext,keyright);
+    swap(plaintext);
+    whitening(plaintext,keyleft,keyright);
     for(int i=0;i < ROUNDS;i++){
         free(subkeys[i]);
     }
@@ -128,16 +175,15 @@ void encrypt(char* plaintext, char* keyleft, char* keyright){
  *  @param char* keyright: the right 64 bits of the 80 bit key.
  */
 void decrypt(char* ciphertext, char* keyleft, char* keyright){
-    whitening(ciphertext,keyright);
+    whitening(ciphertext,keyleft,keyright);
     char** subkeys = subkeyGeneration(keyleft,keyright);
-
     //the start of the  encryption proccess
     for(int i=ROUNDS-1;i>=0;i-=1){
         char* subkeyset = subkeys[i];
         helpermethod(ciphertext,subkeyset);
     }
-    whitening(ciphertext,keyright);
-    
+    swap(ciphertext);
+    whitening(ciphertext,keyleft,keyright);
     for(int i=0;i < ROUNDS;i++){
         free(subkeys[i]);
     }
@@ -444,6 +490,40 @@ void helpermethod(char* plaintext, char* subkeyset){
     free(T1);
 }
 
+/**
+ * This method swaps the first 8 bytes of the text with the last 8 bytes of the text. Assumes that the text is 16 bytes long.
+ * 
+ * @param char* plaintext: is the text you wanna swap around.
+ */
+void swap(char* plaintext){
+    char temp[9];
+    temp[0] = plaintext[0];
+    temp[1] = plaintext[1];
+    temp[2] = plaintext[2];
+    temp[3] = plaintext[3];
+    temp[4] = plaintext[4];
+    temp[5] = plaintext[5];
+    temp[6] = plaintext[6];
+    temp[7] = plaintext[7];
+
+    plaintext[0] = plaintext[8];
+    plaintext[1] = plaintext[9];
+    plaintext[2] = plaintext[10];
+    plaintext[3] = plaintext[11];
+    plaintext[4] = plaintext[12];
+    plaintext[5] = plaintext[13];
+    plaintext[6] = plaintext[14];
+    plaintext[7] = plaintext[15];
+
+    plaintext[8] = temp[0];
+    plaintext[9] = temp[1];
+    plaintext[10] = temp[2];
+    plaintext[11] = temp[3];
+    plaintext[12] = temp[4];
+    plaintext[13] = temp[5];
+    plaintext[14] = temp[6];
+    plaintext[15] = temp[7];
+}
 
 /**
  *  This method xor's the text with the key
@@ -451,11 +531,20 @@ void helpermethod(char* plaintext, char* subkeyset){
  *  @param char* plaintext: the text you are manipulating.
  *  @param char* keyright: the key that you are using in the xor
  */ 
-void whitening(char* plaintext, char* keyright){
-    unsigned long long ptValue = strtoull(plaintext,NULL,16);
+void whitening(char* plaintext, char* keyleft, char* keyright){
+    /*unsigned long long ptValue = strtoull(plaintext,NULL,16);
     unsigned long long krValue = strtoull(keyright,NULL,16);
     unsigned long long xor = ptValue ^ krValue;
-    sprintf(plaintext,"%llx",xor);
+    sprintf(plaintext,"%llx",xor);*/
+
+    char wholekey[21];
+    sprintf(wholekey,"%s%s",keyleft,keyright);
+    for(int i = 0;i < strlen(plaintext);i++){
+         unsigned int keyValue = hexchartoint(wholekey[i]);
+         unsigned int ptValue = hexchartoint(plaintext[i]);
+         unsigned int xor = keyValue ^ ptValue;
+         plaintext[i] = inttohexchar(xor);
+    }
 }
 
 /**
@@ -533,29 +622,32 @@ char** subkeyGeneration(char* leftkey, char* rightkey){
                 temp1 = right[12];
                 right[12] = temp2;
                 temp2 = right[13];
-                right[13] = temp2;
-                temp2 = right[14];
-                right[14] = temp1;
-                temp1 = right[15];
-                right[15] = temp2;
-                temp2 = right[16];
-                right[16] = temp1;        
+                right[13] = temp1;
+                temp1 = right[14];
+                right[14] = temp2;
+                temp2 = right[15];
+                right[15] = temp1;
+                temp1 = right[16];
+                right[16] = temp2;       
             }
 
+            char wholekey[21];
+            sprintf(wholekey,"%s%s",left,right);
+
             char key[3];
-            int roundNum = (4*rounds+index)%8;
+            int roundNum = (4*rounds+index)%10;
             index += 1;
             index = index % 4;
 
-            int rightLen = strlen(right);
-            key[1] = right[(rightLen-1)-(2*roundNum)];
-            key[0] = right[rightLen-(2*(roundNum+1))];
+            int rightLen = strlen(wholekey);
+            key[1] = wholekey[(rightLen-1)-(2*roundNum)];
+            key[0] = wholekey[rightLen-(2*(roundNum+1))];
             key[2] = '\0';
 
             strcat(subkeys[rounds],key);
-            printf("%s%s subkey: %s\n",left,right,key);
+            //printf("%s subkey: %s\n",wholekey,key);
         }
-        printf("subkeys:%s\n\n",subkeys[rounds]);
+        //printf("subkeys:%s\n\n",subkeys[rounds]);
     }
 
     return subkeys;
@@ -620,7 +712,6 @@ char* gfunction(char* section, char* k0, char* k1, char* k2, char* k3){
 
     char* TValue = (char*)calloc(5,sizeof(char));
     sprintf(TValue,"%s%s",g5,g6);
-    //sprintf(TValue,"%x%x",g5Value,g6Value);
     //printf("g1:%x g2:%x g3:%x g4:%x g5:%x g6:%x\n",g1Value,g2Value,g3Value,g4Value,g5Value,g6Value);
     return TValue;
 }
@@ -670,13 +761,41 @@ unsigned int hexchartoint(char letter){
     if(letter == '7') return 7;
     if(letter == '8') return 8;
     if(letter == '9') return 9;
-    if(letter == 'a') return 10;
-    if(letter == 'b') return 11;
-    if(letter == 'c') return 12;
-    if(letter == 'd') return 13;
-    if(letter == 'e') return 14;
-    if(letter == 'f') return 15;
+    if(letter == 'a' || letter == 'A') return 10;
+    if(letter == 'b' || letter == 'B') return 11;
+    if(letter == 'c' || letter == 'C') return 12;
+    if(letter == 'd' || letter == 'D') return 13;
+    if(letter == 'e' || letter == 'E') return 14;
+    if(letter == 'f' || letter == 'F') return 15;
     return -1;
+}
+
+/**
+ *  given a int number returns the hex equivalent. If the int was not a hex value, 'z' was returned signifiying that the value is not hex.
+ *  
+ *  @param int hex: is the int hex value, should be from 0-15
+ * 
+ *  @return char: returns the character of the equivelent int that was passed.
+ */
+char inttohexchar(int hex){
+    if(hex == 0) return '0';
+    if(hex == 1) return '1';
+    if(hex == 2) return '2';
+    if(hex == 3) return '3';
+    if(hex == 4) return '4';
+    if(hex == 5) return '5';
+    if(hex == 6) return '6';
+    if(hex == 7) return '7';
+    if(hex == 8) return '8';
+    if(hex == 9) return '9';
+    if(hex == 10) return 'a';
+    if(hex == 11) return 'b';
+    if(hex == 12) return 'c';
+    if(hex == 13) return 'd';
+    if(hex == 14) return 'e';
+    if(hex == 15) return 'f';
+
+    return 'z';
 }
 
 /**
@@ -709,3 +828,4 @@ unsigned int fTable(int x, int y){
     };
     return strtoul(FTable[x][y],NULL,16);
 }
+
